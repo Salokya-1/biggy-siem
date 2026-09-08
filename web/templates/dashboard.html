@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biggy · SOC Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%233ad6c0' d='M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z'/></svg>">
+</head>
+<body>
+  <!-- icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13 16 9"/><path d="M4 20a8 8 0 1 1 16 0"/><circle cx="12" cy="13" r="1.3" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.8 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="12" rx="4"/><path d="M8 10H4M8 14H4M16 10h4M16 14h4M9 6 7.5 4M15 6l1.5-2M9 18l-1.5 2M15 18l1.5 2"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></symbol>
+      <symbol id="i-net" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2M12 12v2"/></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v2M14 3v2M10 19v2M14 19v2M3 10h2M3 14h2M19 10h2M19 14h2"/></symbol>
+      <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></symbol>
+      <symbol id="i-radar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-4.6-7.2"/><path d="M12 12 18 6"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+      <symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M4 7l2-3h12l2 3M9 12h6"/></symbol>
+      <symbol id="i-logs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h12M8 12h12M8 19h12"/><circle cx="4" cy="5" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="19" r="1.1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r="1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 15.5a6 6 0 0 1 7 0"/><circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="10" rx="1.5"/><path d="M7 9V5M12 9V5M17 9V5M8 13h.01M12 13h.01M16 13h.01"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-8 4 16 3-8h5"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-2h5l1 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="app">
+    <!-- ========================= SIDEBAR ========================= -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-brand">
+        <svg class="mark" viewBox="0 0 48 48" fill="none">
+          <path d="M24 3 6 10v13c0 11 7.6 18.5 18 23 10.4-4.5 18-12 18-23V10z" fill="none" stroke="#3ad6c0" stroke-width="2.4" stroke-linejoin="round"/>
+          <circle cx="24" cy="22" r="6.5" fill="none" stroke="#3ad6c0" stroke-width="2.4"/>
+          <circle cx="24" cy="22" r="2.4" fill="#3ad6c0"/>
+        </svg>
+        <div>
+          <div class="name">BIGGY</div>
+          <div class="ver">SIEM · XDR v1.0</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-sec">Monitor</div>
+        <div class="nav-item active" data-view="overview"><svg><use href="#i-gauge"/></svg> Overview</div>
+        <div class="nav-item" data-view="events"><svg><use href="#i-pulse"/></svg> Event Stream <span class="badge" id="nav-events">0</span></div>
+        <div class="nav-item" data-view="alerts"><svg><use href="#i-alert"/></svg> Alerts <span class="badge" id="nav-alerts">0</span></div>
+        <div class="nav-item" data-view="logs"><svg><use href="#i-logs"/></svg> Endpoint Logs <span class="badge" id="nav-logs">0</span></div>
+
+        <div class="nav-sec">Detect</div>
+        <div class="nav-item" data-view="detections"><svg><use href="#i-shield"/></svg> Detection Rules</div>
+        <div class="nav-item" data-view="scanner"><svg><use href="#i-bug"/></svg> Malware Scanner</div>
+        <div class="nav-item" data-view="intel"><svg><use href="#i-globe"/></svg> Threat Intel</div>
+
+        <div class="nav-sec">Infrastructure</div>
+        <div class="nav-item" data-view="network"><svg><use href="#i-net"/></svg> Network Map</div>
+        <div class="nav-item" data-view="agents"><svg><use href="#i-cpu"/></svg> Host Agents <span class="badge" id="nav-agents">0</span></div>
+
+        <div class="nav-sec">Forensics</div>
+        <div class="nav-item" data-view="cases"><svg><use href="#i-folder"/></svg> Cases <span class="badge" id="nav-cases">0</span></div>
+        <div class="nav-item" data-view="iocs"><svg><use href="#i-target"/></svg> IOC Watchlist <span class="badge" id="nav-iocs">0</span></div>
+        <div class="nav-item" data-view="evidence"><svg><use href="#i-archive"/></svg> Evidence</div>
+        <div class="nav-item" data-view="timeline"><svg><use href="#i-clock"/></svg> Timeline</div>
+
+        <div class="nav-sec">Respond</div>
+        <div class="nav-item" data-view="response"><svg><use href="#i-ban"/></svg> Active Response <span class="badge" id="nav-blocked">0</span></div>
+      </nav>
+
+      <div class="sb-foot">
+        <div class="row"><span class="led live" id="sb-led"></span> Engine online</div>
+        <div class="row" id="sb-integrations"></div>
+      </div>
+    </aside>
+
+    <!-- ========================= MAIN ========================= -->
+    <div class="main">
+      <header class="topbar">
+        <button class="btn btn-ghost btn-sm menu-btn" id="menuBtn" title="Menu" style="padding:6px"><svg style="width:18px;height:18px"><use href="#i-logs"/></svg></button>
+        <div class="page-title" id="pageTitle">Overview<small id="pageSub">Real-time security posture</small></div>
+        <div class="search">
+          <svg><use href="#i-search"/></svg>
+          <input type="search" id="globalSearch" placeholder="Search events, IPs, hosts, users…">
+        </div>
+        <div class="conn"><span class="led" id="wsLed"></span><span id="wsText">connecting…</span></div>
+        <div class="user-chip">
+          <div class="avatar" id="avatar">A</div>
+          <div style="line-height:1.2">
+            <div style="font-size:12.5px;font-weight:600" id="userName">{{ user.sub }}</div>
+            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">{{ user.role }}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn" title="Sign out" style="padding:6px"><svg style="width:15px;height:15px"><use href="#i-logout"/></svg></button>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- ===================== OVERVIEW ===================== -->
+        <section class="view active" id="view-overview">
+          <div class="grid cols-4" id="statTiles"></div>
+          <div class="grid cols-3" style="margin-top:14px">
+            <div class="card span-2">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-pulse"/></svg><h3>Live Event Feed</h3>
+                <div class="tools"><span class="pill" id="feedRate">0 evt/min</span></div></div>
+              <div class="card-b"><div class="feed" id="liveFeed"></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Severity · 24h</h3></div>
+              <div class="card-b"><div class="sevbars" id="sevBars"></div>
+                <hr class="hr"><div class="donut-wrap"><div id="catDonut"></div><div class="legend" id="catLegend"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid cols-2" style="margin-top:14px">
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--rose)"><use href="#i-alert"/></svg><h3>Recent Alerts</h3>
+                <div class="tools"><span class="btn btn-sm" data-goto="alerts">View all</span></div></div>
+              <div class="card-b" style="padding:0"><div class="table-wrap short"><table class="table"><tbody id="recentAlerts"></tbody></table></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent-2)"><use href="#i-net"/></svg><h3>Asset Health</h3>
+                <div class="tools"><span class="btn btn-sm" data-goto="network">Network map</span></div></div>
+              <div class="card-b" id="assetHealth"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== EVENTS ===================== -->
+        <section class="view" id="view-events">
+          <div class="card">
+            <div class="card-h">
+              <svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-pulse"/></svg><h3>Event Stream</h3>
+              <div class="tools">
+                <select id="evtSev" class="btn btn-sm" style="font-family:var(--mono)">
+                  <option value="0">All severity</option><option value="2">≥ Low</option>
+                  <option value="3">≥ Medium</option><option value="4">≥ High</option><option value="5">Critical</option>
+                </select>
+                <input id="evtSearch" class="input" style="width:180px;padding:6px 10px;font-size:12px" placeholder="filter…">
+                <button class="btn btn-sm" id="evtRefresh"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg></button>
+                <button class="btn btn-sm" id="injectBtn">+ Inject test event</button>
+              </div>
+            </div>
+            <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+              <thead><tr><th>Time</th><th>Sev</th><th>Source</th><th>Category</th><th>Message</th><th>Host</th><th>Src IP</th></tr></thead>
+              <tbody id="eventsTable"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- ===================== ALERTS ===================== -->
+        <section class="view" id="view-alerts">
+          <div class="card">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--rose)"><use href="#i-alert"/></svg><h3>Alerts</h3>
+              <div class="tools">
+                <select id="alertFilter" class="btn btn-sm" style="font-family:var(--mono)">
+                  <option value="">All</option><option value="open">Open</option>
+                  <option value="investigating">Investigating</option><option value="closed">Closed</option>
+                </select>
+                <button class="btn btn-sm" id="alertRefresh"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg></button>
+              </div></div>
+            <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+              <thead><tr><th>Time</th><th>Sev</th><th>Alert</th><th>Entity</th><th>MITRE</th><th>Rule</th><th>Status</th><th></th></tr></thead>
+              <tbody id="alertsTable"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- ===================== ENDPOINT LOGS ===================== -->
+        <section class="view" id="view-logs">
+          <div class="card">
+            <div class="card-h">
+              <svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-logs"/></svg>
+              <h3>Endpoint Event Log</h3>
+              <div class="tools">
+                <select id="logHost" class="btn btn-sm" style="font-family:var(--mono)"><option value="">All devices</option></select>
+                <input id="logSearch" class="input" style="width:170px;padding:6px 10px;font-size:12px" placeholder="filter…">
+                <span class="pill" id="logCollector">collector</span>
+                <button class="btn btn-sm" id="logPull" title="Pull latest from Windows Event Log"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg> Pull</button>
+              </div>
+            </div>
+            <div class="card-b" style="padding:10px 6px">
+              <div class="muted" style="font-size:11.5px;padding:2px 10px 10px">
+                Live security events collected from the devices' Windows Event Viewer. Hover the
+                <svg style="width:13px;height:13px;color:var(--accent-2);vertical-align:-2px"><use href="#i-info"/></svg>
+                icon on any code to see what it means.
+              </div>
+              <div id="logStream" class="logstream"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== DETECTIONS ===================== -->
+        <section class="view" id="view-detections">
+          <div class="grid cols-3">
+            <div class="card span-2">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-shield"/></svg><h3>Detection Rules</h3>
+                <div class="tools"><span class="pill" id="ruleCount">0 rules</span></div></div>
+              <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+                <thead><tr><th>ID</th><th>Rule</th><th>Category</th><th>Sev</th><th>Action</th><th>MITRE</th><th>On</th></tr></thead>
+                <tbody id="rulesTable"></tbody></table></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>New Rule</h3></div>
+              <div class="card-b">
+                <div class="field"><label>Name</label><input id="rName" placeholder="Suspicious login volume"></div>
+                <div class="form-row">
+                  <div class="field"><label>Match field</label>
+                    <select id="rField"><option value="message">message</option><option value="src_ip">src_ip</option><option value="user">user</option><option value="host">host</option><option value="category">category</option></select></div>
+                  <div class="field"><label>Type</label>
+                    <select id="rType"><option value="contains">contains</option><option value="equals">equals</option><option value="regex">regex</option><option value="threshold">threshold</option></select></div>
+                </div>
+                <div class="field"><label>Value / pattern</label><input id="rValue" placeholder="failed login"></div>
+                <div class="form-row">
+                  <div class="field"><label>Severity</label>
+                    <select id="rSev"><option value="2">Low</option><option value="3" selected>Medium</option><option value="4">High</option><option value="5">Critical</option></select></div>
+                  <div class="field"><label>Action</label>
+                    <select id="rAction"><option value="alert">alert</option><option value="block">block (IPS)</option><option value="quarantine">quarantine</option></select></div>
+                </div>
+                <div class="form-row" id="thresholdRow" style="display:none">
+                  <div class="field"><label>Threshold</label><input id="rThreshold" type="number" value="5"></div>
+                  <div class="field"><label>Window (s)</label><input id="rWindow" type="number" value="60"></div>
+                </div>
+                <button class="btn btn-primary btn-block" id="addRule" style="margin-top:8px">Deploy rule</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== SCANNER ===================== -->
+        <section class="view" id="view-scanner">
+          <div class="grid cols-2">
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--gold)"><use href="#i-bug"/></svg><h3>File Scan · Argus Engine</h3></div>
+              <div class="card-b">
+                <div class="dropzone" id="dropzone">
+                  <svg><use href="#i-upload"/></svg>
+                  <div>Drop a file or <b>click to browse</b></div>
+                  <div class="muted" style="font-size:11.5px;margin-top:5px">Hashing · signatures · heuristics · entropy</div>
+                  <input type="file" id="fileInput" hidden>
+                </div>
+                <label class="inline-form" style="margin-top:12px;font-size:12.5px;cursor:pointer">
+                  <span class="toggle" id="vtToggle"></span> Enrich with VirusTotal (by hash)
+                </label>
+                <div id="scanResult" style="margin-top:14px"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-radar"/></svg><h3>Folder / Watch Scan</h3></div>
+              <div class="card-b">
+                <div class="field"><label>Directory</label><input id="folderPath" value="{{ watch_dir }}"></div>
+                <div class="inline-form">
+                  <button class="btn btn-primary" id="scanFolder">Scan directory</button>
+                  <label class="inline-form" style="font-size:12px;cursor:pointer"><span class="toggle" id="deepToggle"></span> recurse</label>
+                  <span class="pill">auto-scan every 5 min</span>
+                </div>
+                <div id="folderResult" style="margin-top:14px"></div>
+              </div>
+              <div class="card-h" style="border-top:1px solid var(--line-soft)"><h3>Recent Scans</h3></div>
+              <div class="card-b" style="padding:0"><div class="table-wrap short"><table class="table">
+                <thead><tr><th>Time</th><th>Target</th><th>Verdict</th><th>Engine</th><th>Hits</th></tr></thead>
+                <tbody id="scansTable"></tbody></table></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== THREAT INTEL ===================== -->
+        <section class="view" id="view-intel">
+          <div class="card">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent-2)"><use href="#i-globe"/></svg><h3>Threat Intelligence Lookup</h3>
+              <div class="tools"><span class="tag" id="vtStatus">VirusTotal</span></div></div>
+            <div class="card-b">
+              <div class="inline-form">
+                <select id="intelType" class="input" style="width:130px">
+                  <option value="hash">File hash</option><option value="ip">IP address</option>
+                  <option value="domain">Domain</option><option value="url">URL</option>
+                </select>
+                <input id="intelValue" class="input" style="flex:1;min-width:220px" placeholder="Paste a SHA-256, IP, domain or URL…">
+                <button class="btn btn-primary" id="intelLookup">Query</button>
+              </div>
+              <div class="muted" style="font-size:11.5px;margin-top:8px">Tip: try the EICAR hash <code class="mono" style="color:var(--accent);cursor:pointer" id="eicarHash">275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f</code></div>
+              <div id="intelResult" style="margin-top:16px"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== NETWORK ===================== -->
+        <section class="view" id="view-network">
+          <!-- live telemetry strip -->
+          <div class="grid cols-3">
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-activity"/></svg><h3>Live Throughput</h3>
+                <div class="tools"><span class="led live" id="tpLed"></span></div></div>
+              <div class="card-b">
+                <div class="row-between" style="align-items:flex-end">
+                  <div><div class="muted" style="font-size:10px;letter-spacing:1px;text-transform:uppercase">▼ Download</div>
+                    <div class="mono" style="font-size:22px;font-weight:700;color:var(--accent)" id="tpDown">— </div></div>
+                  <div style="text-align:right"><div class="muted" style="font-size:10px;letter-spacing:1px;text-transform:uppercase">▲ Upload</div>
+                    <div class="mono" style="font-size:22px;font-weight:700;color:var(--accent-2)" id="tpUp">— </div></div>
+                </div>
+                <svg id="tpSpark" viewBox="0 0 300 60" preserveAspectRatio="none" style="width:100%;height:52px;margin-top:8px"></svg>
+                <div class="chips" style="margin-top:6px">
+                  <span class="pill" id="tpPktsRx">rx — pkts</span>
+                  <span class="pill" id="tpPktsTx">tx — pkts</span>
+                  <span class="pill" id="tpErr">0 err/drop</span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--gold)"><use href="#i-link"/></svg><h3>Connection Quality</h3></div>
+              <div class="card-b" id="linkQuality"><div class="empty"><span class="spin"></span></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent-2)"><use href="#i-net"/></svg><h3>Sockets</h3></div>
+              <div class="card-b" id="sockSummary"><div class="empty"><span class="spin"></span></div></div>
+            </div>
+          </div>
+
+          <!-- interface inventory -->
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-wifi"/></svg><h3>Network Interfaces &amp; Infrastructure</h3>
+              <div class="tools"><span class="pill" id="ifHost">—</span></div></div>
+            <div class="card-b"><div class="grid cols-2" id="ifaceGrid"></div></div>
+          </div>
+
+          <!-- active connections -->
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-activity"/></svg><h3>Active Connections</h3>
+              <div class="tools">
+                <label class="inline-form" style="font-size:11.5px;cursor:pointer"><span class="toggle" id="connEstOnly"></span> established only</label>
+                <button class="btn btn-sm" id="connRefresh"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg></button>
+              </div></div>
+            <div class="card-b" style="padding:0"><div class="table-wrap short"><table class="table">
+              <thead><tr><th>Proto</th><th>Local</th><th>Remote</th><th>State</th><th>Process</th><th>PID</th><th></th></tr></thead>
+              <tbody id="connTable"></tbody></table></div></div>
+          </div>
+
+          <!-- discovery + port scan + devices -->
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-net"/></svg><h3>Asset Discovery &amp; Port Scan</h3>
+              <div class="tools">
+                <span class="pill" id="subnetPill">—</span>
+                <button class="btn btn-sm" id="discoverBtn"><svg style="width:14px;height:14px"><use href="#i-radar"/></svg> Discover</button>
+                <button class="btn btn-sm" id="monitorBtn">Ping sweep</button>
+              </div></div>
+            <div class="card-b">
+              <div class="inline-form" style="margin-bottom:14px">
+                <input id="scanTarget" class="input" style="width:220px" placeholder="target host / IP (blank = self)">
+                <input id="scanArgs" class="input" style="width:200px" placeholder="nmap args (default -T4 -F -Pn)">
+                <button class="btn btn-primary" id="portScanBtn">Port scan</button>
+                <span id="scanEngine" class="pill"></span>
+              </div>
+              <div id="scanOut" style="margin-bottom:14px"></div>
+              <div class="grid cols-3" id="deviceGrid"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== AGENTS ===================== -->
+        <section class="view" id="view-agents">
+          <div class="card">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-cpu"/></svg><h3>Host Agents</h3>
+              <div class="tools"><span class="btn btn-sm" id="agentRefresh"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg></span></div></div>
+            <div class="card-b">
+              <div class="empty" id="agentEmpty" style="display:none">
+                <svg><use href="#i-cpu"/></svg>
+                <div>No agents enrolled yet.</div>
+                <div class="dim" style="margin-top:6px;font-size:12px">Run these on the device you want to monitor (it must be able to reach this machine on the network):</div>
+                <div class="muted" style="margin-top:10px;font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);padding:14px 16px;border-radius:6px;display:inline-block;text-align:left;line-height:1.7">
+                  <span style="color:var(--text-dim)"># 1. install the one dependency (needs Python 3.9+)</span><br>
+                  pip install psutil<br><br>
+                  <span style="color:var(--text-dim)"># 2. fetch the agent from this server</span><br>
+                  curl <span style="color:var(--accent)">http://{{ lan_ip }}:{{ server_port }}</span>/agent.py -o argus_agent.py<br><br>
+                  <span style="color:var(--text-dim)"># 3. run it (points back at this machine)</span><br>
+                  python argus_agent.py --server <span style="color:var(--accent)">http://{{ lan_ip }}:{{ server_port }}</span> --key <span style="color:var(--accent-2)">{{ agent_key }}</span>
+                </div>
+                <div class="dim" style="margin-top:12px;font-size:11.5px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.6">
+                  This machine's address is <b class="mono" style="color:var(--text)">{{ lan_ip }}:{{ server_port }}</b>.
+                  If the agent can't connect, allow inbound TCP {{ server_port }} through this PC's firewall
+                  (run once, elevated): <span class="mono" style="color:var(--text-dim)">netsh advfirewall firewall add rule name="Biggy SIEM" dir=in action=allow protocol=TCP localport={{ server_port }}</span>
+                </div>
+              </div>
+              <div class="grid cols-2" id="agentGrid"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== CASES ===================== -->
+        <section class="view" id="view-cases">
+          <div class="grid cols-3">
+            <div class="card span-2">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-folder"/></svg><h3>Investigation Cases</h3>
+                <div class="tools"><button class="btn btn-sm btn-primary" id="newCaseBtn">+ New case</button></div></div>
+              <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+                <thead><tr><th>Ref</th><th>Title</th><th>Sev</th><th>Status</th><th>Assignee</th><th>Items</th><th>Updated</th></tr></thead>
+                <tbody id="casesTable"></tbody></table></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3 id="caseDetailTitle">Case Detail</h3>
+                <div class="tools" id="caseDetailTools"></div></div>
+              <div class="card-b" id="caseDetail"><div class="empty">Select a case to view its evidence & chain of custody.</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== IOC WATCHLIST ===================== -->
+        <section class="view" id="view-iocs">
+          <div class="grid cols-3">
+            <div class="card span-2">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--rose)"><use href="#i-target"/></svg><h3>Indicators of Compromise</h3>
+                <div class="tools"><span class="pill" id="iocCount">0 active</span></div></div>
+              <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+                <thead><tr><th>Kind</th><th>Indicator</th><th>Sev</th><th>Source</th><th>Hits</th><th>Last hit</th><th>On</th><th></th></tr></thead>
+                <tbody id="iocsTable"></tbody></table></div></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Add Indicator</h3></div>
+              <div class="card-b">
+                <div class="form-row">
+                  <div class="field"><label>Kind</label>
+                    <select id="iocKind"><option value="ip">IP</option><option value="hash">Hash</option><option value="domain">Domain</option><option value="url">URL</option><option value="user">User</option><option value="file">File</option></select></div>
+                  <div class="field"><label>Severity</label>
+                    <select id="iocSev"><option value="2">Low</option><option value="3">Medium</option><option value="4" selected>High</option><option value="5">Critical</option></select></div>
+                </div>
+                <div class="field"><label>Indicator value</label><input id="iocValue" placeholder="1.2.3.4 / sha256 / evil.com"></div>
+                <div class="field"><label>Source</label><input id="iocSource" placeholder="threat-intel / incident" value="manual"></div>
+                <button class="btn btn-primary btn-block" id="addIocBtn">Add to watchlist</button>
+                <hr class="hr">
+                <div class="field"><label>Bulk import (one per line, auto-detected)</label>
+                  <textarea id="iocImport" rows="4" placeholder="8.8.8.8&#10;evil.com&#10;44d88612fea8a8f36de82e1278abb02f"></textarea></div>
+                <button class="btn btn-block" id="importIocBtn">Import indicators</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== EVIDENCE ===================== -->
+        <section class="view" id="view-evidence">
+          <div class="card" id="integrityCard">
+            <div class="card-b" id="integrityBanner"><div class="empty"><span class="spin"></span> Verifying audit chain…</div></div>
+          </div>
+          <div class="grid cols-3" style="margin-top:14px">
+            <div class="card"><div class="card-b" style="text-align:center">
+              <svg style="width:26px;height:26px;color:var(--accent)"><use href="#i-archive"/></svg>
+              <div style="margin:8px 0;font-size:12.5px" class="dim">Compressed log backup (.jsonl.gz + SHA-256 manifest)</div>
+              <button class="btn btn-primary btn-block" id="backupNowBtn">Backup now</button>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center">
+              <svg style="width:26px;height:26px;color:var(--gold)"><use href="#i-download"/></svg>
+              <div style="margin:8px 0;font-size:12.5px" class="dim">Export a filtered evidence slice</div>
+              <div class="inline-form" style="justify-content:center;margin-bottom:8px">
+                <select id="exportSev" class="input" style="width:120px"><option value="0">All sev</option><option value="3">≥ Medium</option><option value="4">≥ High</option><option value="5">Critical</option></select>
+                <input id="exportQ" class="input" style="width:110px" placeholder="filter…">
+              </div>
+              <button class="btn btn-block" id="exportBtn">Export evidence</button>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center">
+              <svg style="width:26px;height:26px;color:var(--rose)"><use href="#i-camera"/></svg>
+              <div style="margin:8px 0;font-size:12.5px" class="dim">Capture volatile host state (processes, connections, autoruns)</div>
+              <button class="btn btn-danger btn-block" id="triageBtn">Capture triage snapshot</button>
+            </div></div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-archive"/></svg><h3>Evidence Store</h3>
+              <div class="tools"><span class="pill" id="evidenceDir">—</span></div></div>
+            <div class="card-b" style="padding:0"><div class="table-wrap"><table class="table">
+              <thead><tr><th>Created</th><th>Kind</th><th>Name</th><th>Records</th><th>Size</th><th>SHA-256</th><th></th></tr></thead>
+              <tbody id="artifactsTable"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- ===================== TIMELINE ===================== -->
+        <section class="view" id="view-timeline">
+          <div class="card">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-clock"/></svg><h3>Entity Timeline</h3>
+              <div class="tools">
+                <input id="timelineEntity" class="input" style="width:240px" placeholder="IP / host / user to pivot on…">
+                <button class="btn btn-sm btn-primary" id="timelineBtn">Reconstruct</button>
+              </div></div>
+            <div class="card-b" id="timelineOut">
+              <div class="empty"><svg><use href="#i-clock"/></svg><div>Enter an IP, hostname or username to reconstruct everything that touched it.</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== RESPONSE ===================== -->
+        <section class="view" id="view-response">
+          <div class="card">
+            <div class="card-h"><svg style="width:15px;height:15px;color:var(--red)"><use href="#i-ban"/></svg><h3>Active Response · Blocklist (IPS)</h3></div>
+            <div class="card-b">
+              <div class="inline-form" style="margin-bottom:14px">
+                <select id="blockKind" class="input" style="width:120px"><option value="ip">IP</option><option value="hash">Hash</option><option value="file">File</option></select>
+                <input id="blockInd" class="input" style="flex:1;min-width:200px" placeholder="indicator to block…">
+                <button class="btn btn-danger" id="addBlock">Block indicator</button>
+              </div>
+              <div class="table-wrap"><table class="table">
+                <thead><tr><th>Time</th><th>Indicator</th><th>Kind</th><th>Reason</th><th>Source</th><th>State</th><th></th></tr></thead>
+                <tbody id="blockTable"></tbody></table></div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- event detail modal -->
+  <div class="modal-overlay" id="eventModal" style="display:none">
+    <div class="modal">
+      <div class="modal-h">
+        <svg style="width:16px;height:16px;color:var(--accent)"><use href="#i-pulse"/></svg>
+        <div class="mt" id="modalTitle">Event detail</div>
+        <button class="btn btn-ghost btn-sm" id="modalClose" style="margin-left:auto;padding:6px" title="Close (Esc)">✕</button>
+      </div>
+      <div class="modal-b" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+  <script>window.ARGUS = { vt: {{ 'true' if vt_enabled else 'false' }}, nmap: {{ 'true' if nmap else 'false' }} };</script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

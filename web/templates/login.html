@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biggy · Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%233ad6c0' d='M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z'/></svg>">
+</head>
+<body>
+  <div class="radar" aria-hidden="true">
+    <svg viewBox="0 0 400 400" fill="none">
+      <defs>
+        <radialGradient id="rg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#3ad6c0" stop-opacity=".18"/>
+          <stop offset="100%" stop-color="#3ad6c0" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="sw" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3ad6c0" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#3ad6c0" stop-opacity=".5"/>
+        </linearGradient>
+      </defs>
+      <circle cx="200" cy="200" r="196" stroke="#1e2733" stroke-width="1"/>
+      <circle cx="200" cy="200" r="150" stroke="#1e2733" stroke-width="1"/>
+      <circle cx="200" cy="200" r="100" stroke="#1e2733" stroke-width="1"/>
+      <circle cx="200" cy="200" r="50" stroke="#1e2733" stroke-width="1"/>
+      <line x1="4" y1="200" x2="396" y2="200" stroke="#1e2733"/>
+      <line x1="200" y1="4" x2="200" y2="396" stroke="#1e2733"/>
+      <g class="sweep">
+        <path d="M200 200 L200 4 A196 196 0 0 1 396 200 Z" fill="url(#sw)"/>
+        <line x1="200" y1="200" x2="200" y2="4" stroke="#3ad6c0" stroke-width="1.5"/>
+      </g>
+      <circle cx="200" cy="200" r="196" fill="url(#rg)"/>
+    </svg>
+  </div>
+
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-lock">
+        <svg class="mark" viewBox="0 0 48 48" fill="none">
+          <path d="M24 3 6 10v13c0 11 7.6 18.5 18 23 10.4-4.5 18-12 18-23V10z"
+                fill="none" stroke="#3ad6c0" stroke-width="2.4" stroke-linejoin="round"/>
+          <circle cx="24" cy="22" r="7" fill="none" stroke="#3ad6c0" stroke-width="2.4"/>
+          <circle cx="24" cy="22" r="2.6" fill="#3ad6c0"/>
+          <path d="M24 3v42" stroke="#3ad6c0" stroke-opacity=".25" stroke-width="1.4"/>
+        </svg>
+        <div>
+          <h1>BIGGY</h1>
+          <div class="tag">Security Operations Console</div>
+        </div>
+      </div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="u">Operator</label>
+          <input type="text" id="u" name="username" autocomplete="username" placeholder="admin" required autofocus>
+        </div>
+        <div class="field">
+          <label for="p">Passphrase</label>
+          <input type="password" id="p" name="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <div class="auth-error" id="err"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit" style="margin-top:6px;">
+          <span id="submitText">Authenticate</span>
+        </button>
+      </form>
+
+      <div class="auth-hint">
+        First run defaults &nbsp;·&nbsp; <code id="defU">admin</code> / <code>argus</code><br>
+        <span class="muted">All sign-in attempts are logged to the event pipeline.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('submit');
+    const btnText = document.getElementById('submitText');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.style.display = 'none';
+      btn.disabled = true; btnText.innerHTML = '<span class="spin"></span> Verifying';
+      const body = new URLSearchParams({
+        username: document.getElementById('u').value,
+        password: document.getElementById('p').value,
+      });
+      try {
+        const r = await fetch('/api/login', { method: 'POST', body });
+        if (r.ok) { window.location = '/dashboard'; return; }
+        const j = await r.json().catch(() => ({}));
+        err.textContent = j.detail || 'Authentication failed';
+        err.style.display = 'block';
+      } catch (_) {
+        err.textContent = 'Could not reach the Argus manager.';
+        err.style.display = 'block';
+      }
+      btn.disabled = false; btnText.textContent = 'Authenticate';
+    });
+  </script>
+</body>
+</html>

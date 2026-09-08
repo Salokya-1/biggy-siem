@@ -1,0 +1,23 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Secrets & local config (NEVER commit) ----
+.env
+*.key
+
+# ---- Runtime data, database & evidence (host-specific / may hold personal data) ----
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# ---- OS / editor noise ----
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
