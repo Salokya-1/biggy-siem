@@ -113,6 +113,48 @@ async def _get(path: str, resource_key: str) -> dict[str, Any]:
                 "positives": 0, "total": 0, "message": f"VirusTotal error: {exc}"}
 
 
+# --------------------------------------------------------------------------- #
+# Synchronous variants (used by the AI analyst, which runs in a worker thread)
+# --------------------------------------------------------------------------- #
+def _get_sync(path: str, resource_key: str) -> dict[str, Any]:
+    if not settings.virustotal_enabled:
+        return _offline(resource_key)
+    cached = _cache_get(resource_key)
+    if cached:
+        return {**cached, "cached": True}
+    try:
+        with httpx.Client(timeout=30) as client:
+            r = client.get(f"{BASE}{path}", headers=_headers())
+        if r.status_code == 404:
+            return {"enabled": True, "resource": resource_key, "verdict": "unknown",
+                    "positives": 0, "total": 0, "message": "Not found in VirusTotal."}
+        r.raise_for_status()
+        attrs = r.json().get("data", {}).get("attributes", {})
+        result = {"enabled": True, "resource": resource_key, **_summarise(attrs)}
+        _cache_put(resource_key, result)
+        return result
+    except httpx.HTTPError as exc:
+        return {"enabled": True, "resource": resource_key, "verdict": "error",
+                "positives": 0, "total": 0, "message": f"VirusTotal error: {exc}"}
+
+
+def lookup_ip_sync(ip: str) -> dict[str, Any]:
+    return _get_sync(f"/ip_addresses/{ip}", ip)
+
+
+def lookup_hash_sync(h: str) -> dict[str, Any]:
+    return _get_sync(f"/files/{h}", h)
+
+
+def lookup_domain_sync(domain: str) -> dict[str, Any]:
+    return _get_sync(f"/domains/{domain}", domain)
+
+
+def lookup_url_sync(url: str) -> dict[str, Any]:
+    url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
+    return _get_sync(f"/urls/{url_id}", url)
+
+
 async def lookup_hash(sha256: str) -> dict[str, Any]:
     return await _get(f"/files/{sha256}", sha256)
 

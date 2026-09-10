@@ -830,7 +830,7 @@
     if (!aiGreeted) {
       aiGreeted = true;
       aiBubble('a', "Hi — I'm Biggy's built-in analyst, running entirely offline on this machine (no external model). Ask me about your events, an IP, malware, the network, or type <b>help</b>.");
-      const chips = ['Summarise the last 24 hours', 'What are my top threats?', 'Any brute force activity?', 'What have we blocked?'];
+      const chips = ['Summarise the last 24 hours', 'What are my top threats?', 'Any brute force activity?', 'Scan the latest file with VirusTotal', 'What have we blocked?'];
       $('#aiQuick').innerHTML = chips.map(c => `<span class="aichip">${esc(c)}</span>`).join('');
       $$('#aiQuick .aichip').forEach(ch => ch.onclick = () => { $('#aiInput').value = ch.textContent; sendAI(); });
     }
@@ -879,7 +879,7 @@
       if (!aiPopGreeted) {
         aiPopGreeted = true;
         aiPopBubble('a', "Hi — I'm your built-in analyst. Ask me anything about your SIEM data.");
-        const chips = ['Summarise last 24h', 'Top threats', 'Any brute force?'];
+        const chips = ['Summarise last 24h', 'Top threats', 'Scan latest file (VT)'];
         $('#aiPopQuick').innerHTML = chips.map(c => `<span class="aichip">${esc(c)}</span>`).join('');
         $$('#aiPopQuick .aichip').forEach(ch => ch.onclick = () => { $('#aiPopInput').value = ch.textContent; sendAiPop(); });
       }

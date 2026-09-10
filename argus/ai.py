@@ -20,9 +20,14 @@ import time
 from typing import Any, Optional
 
 from . import database as db
+from .config import settings
+from .integrations import virustotal as vt
 from .knowledge import describe
 
 IPV4 = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+HASH_RE = re.compile(r"\b[a-fA-F0-9]{64}\b|\b[a-fA-F0-9]{40}\b|\b[a-fA-F0-9]{32}\b")
+URL_RE = re.compile(r"https?://[^\s\"']+")
+DOMAIN_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b", re.I)
 SEV_WORD = {1: "info", 2: "low", 3: "medium", 4: "high", 5: "critical"}
 
 
@@ -32,6 +37,7 @@ def status() -> dict[str, Any]:
         "engine": "Biggy Analyst",
         "kind": "built-in · offline",
         "note": "Self-contained reasoning engine. No external LLM or model download required.",
+        "virustotal": settings.virustotal_enabled,
     }
 
 
@@ -69,6 +75,78 @@ def _fmt_ago(ts: float) -> str:
     return f"{int(s/86400)}d ago"
 
 
+_NOT_DOMAIN = (".exe", ".dll", ".py", ".txt", ".log", ".gz", ".zip", ".pdf",
+               ".doc", ".docx", ".png", ".jpg", ".scr", ".bat", ".ps1")
+
+
+def _first_domain(q: str):
+    for m in DOMAIN_RE.finditer(q):
+        d = m.group(0).lower()
+        if not IPV4.fullmatch(d) and not d.endswith(_NOT_DOMAIN):
+            return d
+    return None
+
+
+def _is_public_ip(ip: str) -> bool:
+    return bool(IPV4.fullmatch(ip or "")) and not ip.startswith(("10.", "127.", "192.168.", "169.254.")) \
+        and not re.match(r"172\.(1[6-9]|2\d|3[01])\.", ip)
+
+
+def _vt_report(indicator: str, kind: str) -> dict[str, Any]:
+    """Scan one indicator against VirusTotal and format the verdict + advice."""
+    label = {"hash": "file hash", "ip": "IP address", "domain": "domain", "url": "URL"}[kind]
+    if not settings.virustotal_enabled:
+        return {"intent": "vt", "answer":
+                f"VirusTotal isn't configured, so I can't scan the {label} **{indicator}** against the "
+                f"cloud. Add `VIRUSTOTAL_API_KEY` to `.env` to enable it. I can still check your local "
+                f"data \u2014 ask \u201ctell me about {indicator}\u201d."}
+    fn = {"hash": vt.lookup_hash_sync, "ip": vt.lookup_ip_sync,
+          "domain": vt.lookup_domain_sync, "url": vt.lookup_url_sync}[kind]
+    r = fn(indicator)
+    v = r.get("verdict")
+    lines = [f"**VirusTotal scan** of the {label} `{indicator}`:"]
+    if r.get("total"):
+        lines.append(f"Verdict: **{v}** \u2014 {r['positives']}/{r['total']} engines flagged it.")
+    elif v and v != "error":
+        lines.append(f"Verdict: **{v}**.")
+    if r.get("threat_label"):
+        lines.append(f"Threat label: {r['threat_label']}.")
+    if r.get("names"):
+        lines.append("Also seen as: " + ", ".join(r["names"][:4]) + ".")
+    if r.get("reputation") is not None:
+        lines.append(f"Community reputation score: {r['reputation']}.")
+    if r.get("message") and (not r.get("total")):
+        lines.append(r["message"])
+    if v == "malicious":
+        if kind == "ip":
+            lines.append(f"\u25b8 Recommend: block {indicator} now (Active Response) and add it to the IOC watchlist.")
+        elif kind == "hash":
+            lines.append("\u25b8 Recommend: quarantine and isolate any host with this file; add the hash to the watchlist.")
+        else:
+            lines.append(f"\u25b8 Recommend: block access to {indicator} and hunt for hosts that reached it.")
+    elif v == "suspicious":
+        lines.append("\u25b8 A couple of engines flagged it \u2014 treat with caution and corroborate before acting.")
+    elif v == "clean":
+        lines.append("\u25b8 No engines flagged it. Looks clean (though clean \u2260 guaranteed safe).")
+    if r.get("cached"):
+        lines.append("_(cached VirusTotal result)_")
+    return {"intent": "vt", "answer": "\n".join(lines), "vt": r, "indicator": indicator, "kind": kind}
+
+
+def _vt_scan_latest_file() -> dict[str, Any]:
+    row = (db.query_one("SELECT target, sha256 FROM scans WHERE kind='file' AND sha256 IS NOT NULL "
+                        "AND verdict IN ('malicious','suspicious') ORDER BY ts DESC LIMIT 1")
+           or db.query_one("SELECT target, sha256 FROM scans WHERE kind='file' AND sha256 IS NOT NULL "
+                           "ORDER BY ts DESC LIMIT 1"))
+    if not row or not row.get("sha256"):
+        return {"intent": "vt", "answer": "I don't have a scanned file with a hash on record yet. Scan a "
+                "file in the Malware Scanner, or paste a SHA-256 here and I'll check it on VirusTotal."}
+    rep = _vt_report(row["sha256"], "hash")
+    name = (row["target"] or "").split("\\")[-1].split("/")[-1]
+    rep["answer"] = f"Checking the most recent scanned file **{name}** on VirusTotal:\n" + rep["answer"]
+    return rep
+
+
 # --------------------------------------------------------------------------- #
 # 1. Natural-language Q&A
 # --------------------------------------------------------------------------- #
@@ -79,12 +157,28 @@ def answer(question: str) -> dict[str, Any]:
         return {"answer": "Ask me about your events, alerts, an IP, malware, the network, or type "
                           "\u201chelp\u201d to see what I can do.", "intent": "empty"}
 
-    # entity lookup wins if an IP is present
-    ip = IPV4.search(q)
-    if ip:
-        return _entity_report(ip.group(0))
-
     def has(*words): return any(w in ql for w in words)
+
+    # ---- VirusTotal scan intent (IP / file hash / domain / URL) ----
+    vt_intent = has("scan", "virustotal", " vt", "reputation", "malicious?",
+                    "is it safe", "is this safe", "look up", "lookup", "analyse", "analyze", "threat intel")
+    hashm, urlm, ipm = HASH_RE.search(q), URL_RE.search(q), IPV4.search(q)
+    if hashm:                                   # a hash is an unambiguous scan target
+        return _vt_report(hashm.group(0), "hash")
+    if vt_intent and urlm:
+        return _vt_report(urlm.group(0), "url")
+    if vt_intent and ipm:
+        return _vt_report(ipm.group(0), "ip")
+    if vt_intent and ("file" in ql or "malware" in ql):
+        return _vt_scan_latest_file()
+    if vt_intent and not ipm and not urlm:
+        dom = _first_domain(q)
+        if dom:
+            return _vt_report(dom, "domain")
+
+    # entity lookup if an IP is present (local activity, enriched with VT)
+    if ipm:
+        return _entity_report(ipm.group(0))
 
     if has("help", "what can you", "commands", "capabilities"):
         return {"intent": "help", "answer": _help_text()}
@@ -114,9 +208,9 @@ def _help_text() -> str:
             "\u2022 \u201cWhat are my top threats?\u201d\n"
             "\u2022 \u201cAny brute force activity?\u201d\n"
             "\u2022 \u201cTell me about 45.146.164.12\u201d (any IP)\n"
-            "\u2022 \u201cShow malware / scan results\u201d\n"
-            "\u2022 \u201cWhat's on my network?\u201d\n"
-            "\u2022 \u201cWhat have we blocked?\u201d\n"
+            "\u2022 \u201cScan 8.8.8.8 with VirusTotal\u201d (IP / domain / URL / file hash)\n"
+            "\u2022 \u201cCheck this hash <sha256>\u201d or \u201cscan the latest file\u201d\n"
+            "\u2022 \u201cWhat's on my network?\u201d  \u2022  \u201cWhat have we blocked?\u201d\n"
             "You can also click \u201cExplain with AI\u201d on any event or alert.")
 
 
@@ -235,6 +329,11 @@ def _entity_report(entity: str) -> dict[str, Any]:
                    "WHERE src_ip=? OR dst_ip=? OR host=? OR message LIKE ? "
                    "ORDER BY ts DESC LIMIT 8", (entity, entity, entity, like))
     if not evs:
+        # no local trace — but for a public IP, VirusTotal may still know it
+        if _is_public_ip(entity) and settings.virustotal_enabled:
+            rep = _vt_report(entity, "ip")
+            rep["answer"] = f"No local records involve **{entity}**, but here's its VirusTotal reputation:\n" + rep["answer"]
+            return rep
         return {"intent": "entity", "answer": f"I have no records involving **{entity}**."}
     alerts = db.query("SELECT title, severity FROM alerts WHERE entity=? ORDER BY ts DESC LIMIT 4", (entity,))
     blocked = db.query_one("SELECT reason FROM blocklist WHERE indicator=? AND active=1", (entity,))
@@ -249,6 +348,12 @@ def _entity_report(entity: str) -> dict[str, Any]:
     lines.append("Recent activity:")
     for e in evs[:6]:
         lines.append(f"\u2022 {_fmt_ago(e['ts'])} [{SEV_WORD.get(e['severity'],'?')}] {e['message'][:90]}")
+    # VirusTotal reputation for public IPs
+    if _is_public_ip(entity) and settings.virustotal_enabled:
+        vr = vt.lookup_ip_sync(entity)
+        if vr.get("total"):
+            lines.append(f"VirusTotal: **{vr['verdict']}** ({vr['positives']}/{vr['total']} engines)"
+                         + (f" \u2014 {vr['threat_label']}" if vr.get("threat_label") else "") + ".")
     # verdict
     if maxsev >= 4 or blocked or alerts:
         lines.append("\u25b8 Assessment: this entity shows hostile or high-risk behaviour. "
