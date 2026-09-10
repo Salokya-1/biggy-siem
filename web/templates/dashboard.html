@@ -6,7 +6,7 @@
   <title>Biggy · SOC Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_v }}">
   <link rel="stylesheet" media="print" onload="this.media='all'"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%233ad6c0' d='M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z'/></svg>">
@@ -583,6 +583,6 @@
 
   <div class="toast-wrap" id="toasts"></div>
   <script>window.ARGUS = { vt: {{ 'true' if vt_enabled else 'false' }}, nmap: {{ 'true' if nmap else 'false' }} };</script>
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{ asset_v }}"></script>
 </body>
 </html>

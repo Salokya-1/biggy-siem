@@ -37,6 +37,17 @@ from .seed import seed_all
 
 templates = Jinja2Templates(directory=str(settings.WEB_DIR / "templates"))
 
+
+def _asset_version() -> str:
+    """Cache-busting token from the newest CSS/JS mtime, so edited assets are
+    always re-fetched by the browser (never served stale from cache)."""
+    try:
+        css = (settings.WEB_DIR / "static" / "css" / "app.css").stat().st_mtime
+        js = (settings.WEB_DIR / "static" / "js" / "app.js").stat().st_mtime
+        return str(int(max(css, js)))
+    except OSError:
+        return app.version if "app" in dir() else "1"
+
 app = FastAPI(title="Biggy SIEM", version="1.0.0", docs_url="/api/docs")
 app.mount("/static", StaticFiles(directory=str(settings.WEB_DIR / "static")), name="static")
 
@@ -134,7 +145,7 @@ def download_agent():
 async def login_page(request: Request):
     if _current_user(request):
         return RedirectResponse("/dashboard")
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request, "asset_v": _asset_version()})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -149,7 +160,8 @@ async def dashboard_page(request: Request):
          "watch_dir": settings.WATCH_DIR,
          "lan_ip": discovery.local_ip(),
          "server_port": settings.PORT,
-         "agent_key": settings.AGENT_KEY},
+         "agent_key": settings.AGENT_KEY,
+         "asset_v": _asset_version()},
     )
 
 
