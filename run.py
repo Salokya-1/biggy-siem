@@ -21,11 +21,15 @@ except (AttributeError, ValueError):
 
 
 def main() -> None:
+    # 0.0.0.0 / :: mean "listen on all interfaces" and are NOT browsable —
+    # show a URL the user can actually click.
+    browse_host = "localhost" if settings.HOST in ("0.0.0.0", "::", "") else settings.HOST
+    console_url = f"http://{browse_host}:{settings.PORT}"
     banner = f"""
     ┌────────────────────────────────────────────────┐
     │   BIGGY  ·  Security Information & Event Mgmt   │
     ├────────────────────────────────────────────────┤
-    │  Console : http://{settings.HOST}:{settings.PORT:<5}                   │
+    │  Console : {console_url:<36} │
     │  Login   : {settings.ADMIN_USER} / {settings.ADMIN_PASSWORD:<12}                    │
     │  VirusTotal : {'enabled ' if settings.virustotal_enabled else 'offline '}                         │
     │  Watch dir  : {settings.WATCH_DIR[:32]:<32} │

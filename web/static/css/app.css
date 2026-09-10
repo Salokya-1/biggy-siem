@@ -544,6 +544,60 @@ body::before {
 .modal-b .kv2 .v { font-family: var(--mono); color: var(--text); word-break: break-all; }
 .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 
+/* ==========================================================================
+   AI ANALYST
+   ========================================================================== */
+.ai-wrap { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+.aichat { height: 440px; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.bubble { max-width: 88%; padding: 10px 13px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+.bubble.u { align-self: flex-end; background: rgba(58,214,192,.12); border: 1px solid rgba(58,214,192,.3);
+  color: var(--text); border-bottom-right-radius: 4px; }
+.bubble.a { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--text-dim); border-bottom-left-radius: 4px; }
+.bubble.a b { color: var(--text); }
+.bubble .who { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 5px; display: flex; gap: 6px; align-items: center; }
+.bubble .who svg { width: 12px; height: 12px; color: var(--accent); }
+.aiquick { display: flex; gap: 7px; flex-wrap: wrap; padding: 0 14px 10px; }
+.aichip { font-size: 11.5px; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line);
+  color: var(--text-dim); cursor: pointer; background: var(--panel); }
+.aichip:hover { border-color: var(--accent); color: var(--text); }
+.aiform { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line-soft); }
+.aiform input { flex: 1; }
+.ai-typing { align-self: flex-start; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+.ai-insight { border: 1px solid var(--line-soft); border-left: 3px solid var(--muted); border-radius: 6px;
+  padding: 9px 11px; margin-bottom: 8px; }
+.ai-insight.s5 { border-left-color: var(--s5); } .ai-insight.s4 { border-left-color: var(--s4); }
+.ai-insight.s3 { border-left-color: var(--s3); } .ai-insight.s1 { border-left-color: var(--green); }
+.ai-insight .t { font-weight: 600; font-size: 12.5px; }
+.ai-insight .d { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.ai-explka { background: rgba(58,214,192,.06); border: 1px solid rgba(58,214,192,.25); border-radius: 8px;
+  padding: 12px 14px; margin-top: 14px; font-size: 12.5px; line-height: 1.55; color: var(--text-dim); }
+.ai-explka b { color: var(--text); }
+@media (max-width: 860px){ .ai-wrap { grid-template-columns: 1fr; } .aichat { height: 340px; } }
+
+/* floating AI assistant */
+.ai-fab { position: fixed; right: 22px; bottom: 22px; z-index: 150; width: 54px; height: 54px;
+  border-radius: 50%; border: none; cursor: pointer; color: var(--accent-ink);
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 26px rgba(58,214,192,.35); display: grid; place-items: center;
+  transition: transform .15s, box-shadow .15s; }
+.ai-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 12px 34px rgba(58,214,192,.5); }
+.ai-fab svg { width: 26px; height: 26px; }
+.ai-pop { display: none; position: fixed; right: 22px; bottom: 88px; z-index: 150;
+  width: min(374px, calc(100vw - 32px)); height: min(520px, calc(100vh - 140px));
+  flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2)); box-shadow: 0 22px 60px rgba(0,0,0,.6);
+  animation: slidein .18s ease; }
+.ai-pop.show { display: flex; }
+.ai-pop-h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+.ai-pop-t { font-weight: 700; font-size: 13px; }
+.ai-pop-s { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.ai-pop-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ai-pop .aiform { padding: 10px 12px; }
+.ai-pop .bubble { max-width: 92%; font-size: 12.5px; }
+@media (max-width: 560px){ .ai-pop { right: 12px; left: 12px; width: auto; bottom: 82px; } .ai-fab { right: 16px; bottom: 16px; } }
+
 
 @media (max-width: 860px){
   .app { grid-template-columns: 1fr; }

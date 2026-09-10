@@ -17,9 +17,15 @@ from ..core.pipeline import ingest_event
 from .file_scanner import scan_file
 
 SKIP_DIRS = {"$recycle.bin", "system volume information", ".git", "node_modules"}
-MAX_FILE_BYTES = 512 * 1024 * 1024  # skip files larger than 512 MB (only first 4 MB is read anyway)
-MAX_FILES_PER_SCAN = 800            # bound how many files one cycle inspects
-YIELD_EVERY = 4                     # yield the GIL every N files so requests never stall
+MAX_FILE_BYTES = 512 * 1024 * 1024        # on-demand scans: skip files larger than 512 MB
+WATCH_MAX_FILE_BYTES = 100 * 1024 * 1024  # background watcher: skip files larger than 100 MB
+MAX_FILES_PER_SCAN = 400                  # bound how many files ACTUALLY scanned per cycle
+YIELD_EVERY = 4                           # yield the GIL every N files so requests never stall
+
+# Incremental state: path -> (mtime, size). The background watcher scans a file
+# once, then skips it until it changes, so steady-state work is near zero even on
+# a huge Downloads folder. Cleared on restart (a fresh first pass is cheap enough).
+_seen_files: dict[str, tuple] = {}
 
 
 def _record_scan(report: dict) -> int:
@@ -60,37 +66,47 @@ def scan_path(report_path: str | Path) -> dict:
     return report
 
 
-def scan_directory(directory: Optional[str] = None, deep: bool = False) -> dict[str, Any]:
+def scan_directory(directory: Optional[str] = None, deep: bool = False,
+                   incremental: bool = False, max_bytes: int = MAX_FILE_BYTES) -> dict[str, Any]:
     root = Path(directory or settings.WATCH_DIR)
     started = time.time()
-    results = {"scanned": 0, "clean": 0, "suspicious": 0, "malicious": 0,
+    results = {"scanned": 0, "skipped": 0, "clean": 0, "suspicious": 0, "malicious": 0,
                "errors": 0, "findings": [], "directory": str(root)}
     if not root.exists():
         results["message"] = f"Directory not found: {root}"
         return results
 
     walker = root.rglob("*") if deep else root.glob("*")
-    seen = 0
+    scanned = 0
     for entry in walker:
         if not entry.is_file():
             continue
         if any(part.lower() in SKIP_DIRS for part in entry.parts):
             continue
         try:
-            if entry.stat().st_size > MAX_FILE_BYTES:
-                continue
+            st = entry.stat()
         except OSError:
             results["errors"] += 1
             continue
+        if st.st_size > max_bytes:
+            continue
 
-        seen += 1
-        if seen > MAX_FILES_PER_SCAN:
+        # Incremental: skip files already scanned and unchanged (cheap stat only).
+        key = str(entry)
+        sig = (int(st.st_mtime), st.st_size)
+        if incremental and _seen_files.get(key) == sig:
+            results["skipped"] += 1
+            continue
+
+        scanned += 1
+        if scanned > MAX_FILES_PER_SCAN:
             results["capped"] = True
             break
         # Yield the GIL periodically so background scanning never starves the
         # web server's request threads (files can be large / CPU-heavy).
-        if seen % YIELD_EVERY == 0:
+        if scanned % YIELD_EVERY == 0:
             time.sleep(0.003)
+        _seen_files[key] = sig
 
         report = scan_file(entry)
         verdict = report.get("verdict", "error")
@@ -111,12 +127,15 @@ def scan_directory(directory: Optional[str] = None, deep: bool = False) -> dict[
             })
 
     results["duration"] = round(time.time() - started, 2)
-    ingest_event(
-        source="scanner", category="scan", severity=2,
-        message=(f"Directory scan complete: {results['scanned']} files, "
-                 f"{results['malicious']} malicious / {results['suspicious']} suspicious"),
-        host="argus-scanner", raw=results,
-    )
+    # Only log a "scan complete" event when files were actually inspected, so a
+    # quiet incremental cycle (nothing new) doesn't spam the pipeline every run.
+    if results["scanned"] > 0:
+        ingest_event(
+            source="scanner", category="scan", severity=2,
+            message=(f"Directory scan: {results['scanned']} file(s) inspected, "
+                     f"{results['malicious']} malicious / {results['suspicious']} suspicious"),
+            host="argus-scanner", raw=results,
+        )
     return results
 
 
@@ -132,12 +151,15 @@ class WatchService:
         self.enabled = True
 
     def _loop(self) -> None:
-        # small delay so the web server is up before the first scan event
-        self._stop.wait(15)
+        # wait a full minute so the console loads instantly before any scanning
+        self._stop.wait(60)
         while not self._stop.is_set():
             if self.enabled:
                 try:
-                    scan_directory(settings.WATCH_DIR, deep=False)
+                    # incremental + 100 MB cap: each file is read once, unchanged
+                    # files are skipped, huge installers/videos are ignored.
+                    scan_directory(settings.WATCH_DIR, deep=False,
+                                   incremental=True, max_bytes=WATCH_MAX_FILE_BYTES)
                     self.last_run = db.now()
                 except Exception as exc:  # keep the watcher alive no matter what
                     ingest_event(source="scanner", category="error", severity=2,

@@ -38,17 +38,23 @@ def local_subnet() -> str:
 
 
 def _read_arp() -> list[dict]:
-    try:
-        out = subprocess.run(["arp", "-a"], capture_output=True, text=True, timeout=15).stdout
-    except (OSError, subprocess.TimeoutExpired):
-        return []
-    hosts = []
-    for m in re.finditer(r"(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}"
+    out = ""
+    for cmd in (["arp", "-a"], ["ip", "neigh"]):   # net-tools, then iproute2 (Linux)
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=15).stdout
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if out.strip():
+            break
+    hosts, seen = [], set()
+    for m in re.finditer(r"(\d+\.\d+\.\d+\.\d+)\D+([0-9a-fA-F]{2}[:-][0-9a-fA-F]{2}"
                          r"(?:[:-][0-9a-fA-F]{2}){4})", out):
         mac = m.group(2).replace("-", ":").lower()
-        if mac in ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00"):
+        ip = m.group(1)
+        if mac in ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00") or ip in seen:
             continue
-        hosts.append({"ip": m.group(1), "mac": mac})
+        seen.add(ip)
+        hosts.append({"ip": ip, "mac": mac})
     return hosts
 
 

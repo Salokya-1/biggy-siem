@@ -44,6 +44,7 @@
       <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></symbol>
       <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1-2h5l1 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.2"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.8L18.5 9.5l-4.8 1.7L12 16l-1.7-4.8L5.5 9.5l4.8-1.7z"/><path d="M18.5 14.5l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/></symbol>
     </defs>
   </svg>
 
@@ -68,6 +69,7 @@
         <div class="nav-item" data-view="events"><svg><use href="#i-pulse"/></svg> Event Stream <span class="badge" id="nav-events">0</span></div>
         <div class="nav-item" data-view="alerts"><svg><use href="#i-alert"/></svg> Alerts <span class="badge" id="nav-alerts">0</span></div>
         <div class="nav-item" data-view="logs"><svg><use href="#i-logs"/></svg> Endpoint Logs <span class="badge" id="nav-logs">0</span></div>
+        <div class="nav-item" data-view="ai"><svg><use href="#i-spark"/></svg> AI Analyst</div>
 
         <div class="nav-sec">Detect</div>
         <div class="nav-item" data-view="detections"><svg><use href="#i-shield"/></svg> Detection Rules</div>
@@ -204,6 +206,33 @@
                 icon on any code to see what it means.
               </div>
               <div id="logStream" class="logstream"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== AI ANALYST ===================== -->
+        <section class="view" id="view-ai">
+          <div class="ai-wrap">
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-spark"/></svg>
+                <h3>AI Analyst</h3>
+                <div class="tools"><span class="pill a" id="aiStatus">built-in · offline</span></div></div>
+              <div class="card-b" style="padding:0;display:flex;flex-direction:column">
+                <div id="aiChat" class="aichat"></div>
+                <div class="aiquick" id="aiQuick"></div>
+                <div class="aiform">
+                  <input id="aiInput" class="input" placeholder="Ask about events, an IP, malware, the network…">
+                  <button class="btn btn-primary" id="aiSend">Ask</button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><svg style="width:15px;height:15px;color:var(--gold)"><use href="#i-alert"/></svg>
+                <h3>AI Insights</h3>
+                <div class="tools"><button class="btn btn-sm" id="aiRefresh"><svg style="width:14px;height:14px"><use href="#i-refresh"/></svg></button></div></div>
+              <div class="card-b" id="aiInsights"><div class="empty"><span class="spin"></span> analysing…</div></div>
+              <div class="card-h" style="border-top:1px solid var(--line-soft)"><h3>Engine</h3></div>
+              <div class="card-b" style="font-size:12px;color:var(--dim)" id="aiEngine"></div>
             </div>
           </div>
         </section>
@@ -531,6 +560,24 @@
         <button class="btn btn-ghost btn-sm" id="modalClose" style="margin-left:auto;padding:6px" title="Close (Esc)">✕</button>
       </div>
       <div class="modal-b" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- floating AI assistant (available on every view) -->
+  <button class="ai-fab" id="aiFab" title="Ask Biggy Analyst" aria-label="Open AI assistant">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>
+  </button>
+  <div class="ai-pop" id="aiPop">
+    <div class="ai-pop-h">
+      <svg style="width:15px;height:15px;color:var(--accent)"><use href="#i-spark"/></svg>
+      <div><div class="ai-pop-t">Biggy Analyst</div><div class="ai-pop-s">built-in · offline</div></div>
+      <button class="btn btn-ghost btn-sm" id="aiPopClose" title="Close" style="margin-left:auto;padding:5px 9px">✕</button>
+    </div>
+    <div class="ai-pop-body" id="aiPopChat"></div>
+    <div class="aiquick" id="aiPopQuick"></div>
+    <div class="aiform">
+      <input id="aiPopInput" class="input" placeholder="Ask the analyst…" autocomplete="off">
+      <button class="btn btn-primary" id="aiPopSend">Ask</button>
     </div>
   </div>
 

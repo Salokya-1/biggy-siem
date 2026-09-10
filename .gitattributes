@@ -1,0 +1,11 @@
+# Normalise line endings so the code is clean on Linux/macOS after a Windows commit
+* text=auto eol=lf
+*.bat text eol=crlf
+run.sh text eol=lf
+
+# Treat binaries correctly (no EOL munging)
+*.png binary
+*.jpg binary
+*.gz binary
+*.docx binary
+*.db binary

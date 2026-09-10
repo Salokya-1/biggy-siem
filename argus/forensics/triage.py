@@ -72,7 +72,7 @@ def _connections() -> list[dict]:
 
 
 def _autoruns() -> list[dict]:
-    """Common persistence locations (Windows Run keys + scheduled task count)."""
+    """Common persistence locations (Windows Run keys / Linux cron & systemd)."""
     runs = []
     if IS_WINDOWS:
         for hive in (r"HKLM\Software\Microsoft\Windows\CurrentVersion\Run",
@@ -81,6 +81,27 @@ def _autoruns() -> list[dict]:
             for m in re.finditer(r"^\s{4,}(\S.+?)\s+REG_\w+\s+(.+)$", out, re.M):
                 runs.append({"location": hive, "name": m.group(1).strip(),
                              "command": m.group(2).strip()})
+    else:
+        # Linux/macOS persistence: user crontab, system cron, enabled systemd units
+        cron = _run(["crontab", "-l"])
+        for ln in cron.splitlines():
+            ln = ln.strip()
+            if ln and not ln.startswith("#"):
+                runs.append({"location": "crontab -l", "name": "cron job", "command": ln[:200]})
+        for path in ("/etc/crontab",):
+            try:
+                for ln in open(path, errors="replace").read().splitlines():
+                    ln = ln.strip()
+                    if ln and not ln.startswith("#") and " " in ln:
+                        runs.append({"location": path, "name": "system cron", "command": ln[:200]})
+            except OSError:
+                pass
+        units = _run(["systemctl", "list-unit-files", "--state=enabled",
+                      "--type=service", "--no-legend", "--no-pager"])
+        for ln in units.splitlines()[:40]:
+            name = ln.split()[0] if ln.split() else ""
+            if name:
+                runs.append({"location": "systemd (enabled)", "name": name, "command": "enabled service"})
     return runs
 
 

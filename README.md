@@ -32,25 +32,53 @@ Everything runs from **stdlib + 5 pip packages**. No Elasticsearch, no Docker re
 
 ---
 
-## Quick start (Windows / macOS / Linux)
+## Quick start
+
+Biggy is fully cross-platform (Windows, Linux, macOS). Use the launcher for your OS —
+it creates the virtualenv, installs deps and starts the server:
 
 ```bash
-cd argus-siem
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
+# Windows
+run.bat
 
+# Linux / macOS (e.g. Kali)
+chmod +x run.sh && ./run.sh
+```
+
+…or do it by hand:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate           # Windows
+source .venv/bin/activate         # Linux / macOS
 pip install -r requirements.txt
 python run.py
 ```
 
-Open **http://127.0.0.1:8642** and sign in with the first-run credentials:
+Open **http://localhost:8642** and sign in with the first-run credentials:
 
 ```
 user: admin      password: argus
 ```
+
+### Running on Linux / Kali (view from another machine)
+On Linux, Biggy ingests the OS log via **journald / `/var/log/auth.log`** (the Linux
+counterpart to the Windows Event Log — SSH brute-force, sudo, account changes, etc.),
+and uses real **`nmap`** (preinstalled on Kali) for port scans.
+
+To reach the console from your host/VM host, bind to all interfaces (the `run.sh`
+launcher already does this):
+
+```bash
+ARGUS_HOST=0.0.0.0 python run.py
+```
+
+Then browse to `http://<linux-ip>:8642` from the other machine. Recommended extras:
+```bash
+sudo apt update && sudo apt install -y python3-venv git nmap net-tools
+```
+(Reading system logs and raw pings generally needs root — run with `sudo` if the
+Endpoint Log stays empty.)
 
 > Configure everything (secret, admin creds, VirusTotal key, watch folder, port)
 > by copying `.env.example` to `.env`. Biggy seeds an admin account, a default

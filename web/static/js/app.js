@@ -25,6 +25,7 @@
   const sevChip = (s) => `<span class="sev sev-${s}">${SEV[s] || 'med'}</span>`;
   const emptyRow = (n, m) => `<tr><td colspan="${n}" class="empty">${esc(m)}</td></tr>`;
   const xn = (count) => (count > 1) ? `<span class="xn">×${count}</span>` : '';
+  function aiFmt(t) { return esc(t || '').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
   const bytes = (n) => { if (!n) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; const i = Math.min(u.length - 1, Math.log(n) / Math.log(1024) | 0); return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`; };
 
   function toast(title, msg, kind = '') {
@@ -41,6 +42,7 @@
     events: ['Event Stream', 'Normalised log & telemetry pipeline'],
     alerts: ['Alerts', 'Correlated detections requiring triage'],
     logs: ['Endpoint Logs', 'Windows Event Log — hover a code to decode it'],
+    ai: ['AI Analyst', 'Built-in offline reasoning engine — no external LLM'],
     detections: ['Detection Rules', 'IDS ruleset & active-response policy'],
     scanner: ['Malware Scanner', 'Argus engine · signatures, heuristics & entropy'],
     intel: ['Threat Intelligence', 'VirusTotal reputation lookups'],
@@ -334,12 +336,12 @@
     sel.value = cur;
     const col = r.collector;
     $('#logCollector').textContent = col.available
-      ? `Win Event Log · ${col.ingested} pulled` : 'collector: non-Windows host';
+      ? `${col.source || 'OS log'} · ${col.ingested} pulled` : 'OS log collector: unavailable';
     $('#logCollector').className = col.available ? 'tag ok' : 'tag warn';
     let logs = r.logs;
     if (q) logs = logs.filter(l => `${l.message} ${l.event_id} ${l.provider}`.toLowerCase().includes(q.toLowerCase()));
     $('#logStream').innerHTML = logs.map(logRow).join('') ||
-      `<div class="empty"><svg><use href="#i-logs"/></svg><div>No endpoint logs yet. On Windows, click Pull to fetch from the Event Viewer.</div></div>`;
+      `<div class="empty"><svg><use href="#i-logs"/></svg><div>No endpoint logs yet. Click Pull to fetch from the OS log (Windows Event Viewer or Linux syslog/journald).</div></div>`;
   };
   $('#logHost').onchange = () => loaders.logs();
   let logT; $('#logSearch').oninput = () => { clearTimeout(logT); logT = setTimeout(loaders.logs, 250); };
@@ -817,6 +819,93 @@
   $('#timelineBtn').onclick = runTimeline;
   $('#timelineEntity').addEventListener('keydown', e => { if (e.key === 'Enter') runTimeline(); });
 
+  // ---- AI ANALYST -------------------------------------------------------
+  let aiGreeted = false;
+  loaders.ai = async () => {
+    try {
+      const s = await api('/api/ai/status');
+      $('#aiStatus').textContent = s.kind;
+      $('#aiEngine').innerHTML = `<b>${esc(s.engine)}</b> — ${esc(s.note)}`;
+    } catch (_) {}
+    if (!aiGreeted) {
+      aiGreeted = true;
+      aiBubble('a', "Hi — I'm Biggy's built-in analyst, running entirely offline on this machine (no external model). Ask me about your events, an IP, malware, the network, or type <b>help</b>.");
+      const chips = ['Summarise the last 24 hours', 'What are my top threats?', 'Any brute force activity?', 'What have we blocked?'];
+      $('#aiQuick').innerHTML = chips.map(c => `<span class="aichip">${esc(c)}</span>`).join('');
+      $$('#aiQuick .aichip').forEach(ch => ch.onclick = () => { $('#aiInput').value = ch.textContent; sendAI(); });
+    }
+    loadInsights();
+  };
+  async function loadInsights() {
+    $('#aiInsights').innerHTML = `<div class="empty"><span class="spin"></span> analysing…</div>`;
+    try {
+      const r = await api('/api/ai/insights');
+      $('#aiInsights').innerHTML = r.findings.map(f => `<div class="ai-insight s${f.severity}">
+        <div class="t">${esc(f.title)}</div><div class="d">${esc(f.detail)}</div>
+        ${f.entity ? `<div style="margin-top:7px"><span class="aichip" data-ent="${esc(f.entity)}">investigate ${esc(f.entity)}</span></div>` : ''}</div>`).join('')
+        + `<div class="kicker" style="margin-top:6px">model: ${esc(r.model)}</div>`;
+      $$('#aiInsights [data-ent]').forEach(x => x.onclick = () => { $('#aiInput').value = 'Tell me about ' + x.dataset.ent; sendAI(); });
+    } catch (e) { $('#aiInsights').innerHTML = `<div class="tag bad">${esc(e.message)}</div>`; }
+  }
+  function aiBubble(role, html) {
+    const c = $('#aiChat');
+    const who = role === 'a' ? `<div class="who"><svg><use href="#i-spark"/></svg>Biggy Analyst</div>` : '';
+    c.insertAdjacentHTML('beforeend', `<div class="bubble ${role}">${who}${html}</div>`);
+    c.scrollTop = c.scrollHeight;
+  }
+  async function sendAI() {
+    const q = $('#aiInput').value.trim(); if (!q) return;
+    $('#aiInput').value = '';
+    aiBubble('u', esc(q));
+    const c = $('#aiChat');
+    c.insertAdjacentHTML('beforeend', `<div class="ai-typing" id="aiTyping">analysing…</div>`); c.scrollTop = c.scrollHeight;
+    try {
+      const r = await post('/api/ai/ask', { question: q });
+      $('#aiTyping') && $('#aiTyping').remove();
+      aiBubble('a', aiFmt(r.answer));
+    } catch (e) { $('#aiTyping') && $('#aiTyping').remove(); aiBubble('a', 'Sorry — ' + esc(e.message)); }
+  }
+  $('#aiSend').onclick = sendAI;
+  $('#aiInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendAI(); });
+  $('#aiRefresh').onclick = loadInsights;
+
+  // ---- floating AI popup (available on every view) ----------------------
+  let aiPopGreeted = false;
+  function toggleAiPop(force) {
+    const p = $('#aiPop');
+    const show = (force !== undefined) ? force : !p.classList.contains('show');
+    p.classList.toggle('show', show);
+    if (show) {
+      if (!aiPopGreeted) {
+        aiPopGreeted = true;
+        aiPopBubble('a', "Hi — I'm your built-in analyst. Ask me anything about your SIEM data.");
+        const chips = ['Summarise last 24h', 'Top threats', 'Any brute force?'];
+        $('#aiPopQuick').innerHTML = chips.map(c => `<span class="aichip">${esc(c)}</span>`).join('');
+        $$('#aiPopQuick .aichip').forEach(ch => ch.onclick = () => { $('#aiPopInput').value = ch.textContent; sendAiPop(); });
+      }
+      setTimeout(() => $('#aiPopInput').focus(), 50);
+    }
+  }
+  function aiPopBubble(role, html) {
+    const c = $('#aiPopChat');
+    const who = role === 'a' ? `<div class="who"><svg><use href="#i-spark"/></svg>Analyst</div>` : '';
+    c.insertAdjacentHTML('beforeend', `<div class="bubble ${role}">${who}${html}</div>`);
+    c.scrollTop = c.scrollHeight;
+  }
+  async function sendAiPop() {
+    const q = $('#aiPopInput').value.trim(); if (!q) return;
+    $('#aiPopInput').value = '';
+    aiPopBubble('u', esc(q));
+    const c = $('#aiPopChat');
+    c.insertAdjacentHTML('beforeend', `<div class="ai-typing" id="aiPopTyping">analysing…</div>`); c.scrollTop = c.scrollHeight;
+    try { const r = await post('/api/ai/ask', { question: q }); $('#aiPopTyping') && $('#aiPopTyping').remove(); aiPopBubble('a', aiFmt(r.answer)); }
+    catch (e) { $('#aiPopTyping') && $('#aiPopTyping').remove(); aiPopBubble('a', 'Sorry — ' + esc(e.message)); }
+  }
+  $('#aiFab').onclick = () => toggleAiPop();
+  $('#aiPopClose').onclick = () => toggleAiPop(false);
+  $('#aiPopSend').onclick = sendAiPop;
+  $('#aiPopInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendAiPop(); });
+
   // ---- EVENT DETAIL MODAL ----------------------------------------------
   function closeModal() { $('#eventModal').style.display = 'none'; }
   $('#modalClose').onclick = closeModal;
@@ -871,15 +960,25 @@
         <div class="sec">Raw</div>
         <div class="raw">${esc(JSON.stringify(e.raw || {}, null, 2))}</div>
         <div class="modal-actions">
+          <button class="btn btn-sm btn-primary" id="maExplain"><svg style="width:12px;height:12px;vertical-align:-2px"><use href="#i-spark"/></svg> Explain with AI</button>
           ${entity ? `<button class="btn btn-sm" id="maTimeline">↪ Timeline for ${esc(entity)}</button>` : ''}
           ${e.src_ip ? `<button class="btn btn-sm" id="maIoc">+ Add IP to IOCs</button>` : ''}
           ${e.src_ip ? `<button class="btn btn-sm btn-danger" id="maBlock">Block ${esc(e.src_ip)}</button>` : ''}
           <button class="btn btn-sm" id="maCase">Attach to a case</button>
-        </div>`;
+        </div>
+        <div id="maExplainOut"></div>`;
       const t = $('#maTimeline'); if (t) t.onclick = () => { closeModal(); go('timeline'); $('#timelineEntity').value = entity; runTimeline(); };
       const io = $('#maIoc'); if (io) io.onclick = async () => { await post('/api/iocs', { kind: 'ip', value: e.src_ip, severity: 4, source: 'from-event' }); toast('Added to IOC watchlist', e.src_ip); };
       const bl = $('#maBlock'); if (bl) bl.onclick = async () => { await post('/api/blocklist', { indicator: e.src_ip, kind: 'ip', reason: `Blocked from event #${e.id}` }); toast('Indicator blocked', e.src_ip, 'warn'); };
       const ca = $('#maCase'); if (ca) ca.onclick = async () => { const { cases } = await api('/api/cases'); if (!cases.length) { toast('No open case', 'Create a case first (Forensics → Cases)', 'warn'); return; } const c = cases[0]; await post(`/api/cases/${c.id}/items`, { kind: 'event', ref_id: String(e.id), title: e.message }); toast('Attached to case', c.ref); };
+      const ex = $('#maExplain'); if (ex) ex.onclick = async () => {
+        ex.disabled = true; const orig = ex.innerHTML; ex.innerHTML = '<span class="spin"></span> Analysing';
+        try {
+          const r = await post('/api/ai/explain', { kind: 'event', id: e.id });
+          $('#maExplainOut').innerHTML = `<div class="ai-explka"><div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:6px">✦ Biggy Analyst</div>${aiFmt(r.text)}</div>`;
+        } catch (err) { $('#maExplainOut').innerHTML = `<div class="tag bad">${esc(err.message)}</div>`; }
+        ex.innerHTML = orig; ex.disabled = false;
+      };
     } catch (err) { body.innerHTML = `<div class="tag bad">${esc(err.message)}</div>`; }
   }
   // delegated click-to-open across the feed, events table and log stream

@@ -15,8 +15,12 @@ from fastapi.templating import Jinja2Templates
 
 from fastapi.responses import FileResponse
 
-from . import agent_registry, database as db, net_telemetry
+from . import agent_registry, ai, database as db, net_telemetry
 from .collectors.winevent import winevent_collector
+from .collectors.syslog import syslog_collector
+
+# the OS log collector for this host (Windows Event Log or Linux syslog/journald)
+os_log_collector = winevent_collector if winevent_collector.available else syslog_collector
 from .config import settings
 from .core.bus import bus
 from .core.detection import block_indicator
@@ -37,6 +41,16 @@ app = FastAPI(title="Biggy SIEM", version="1.0.0", docs_url="/api/docs")
 app.mount("/static", StaticFiles(directory=str(settings.WEB_DIR / "static")), name="static")
 
 
+@app.middleware("http")
+async def _no_cache_static(request: Request, call_next):
+    """Tell browsers to always revalidate CSS/JS so UI updates never get stuck
+    behind a stale cache (revalidation is cheap: a 304 when unchanged)."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "no-cache, max-age=0"
+    return resp
+
+
 # --------------------------------------------------------------------------- #
 # Lifespan: seed DB, wire the bus to the running loop, start background workers
 # --------------------------------------------------------------------------- #
@@ -52,7 +66,8 @@ async def _startup() -> None:
         if _os.environ.get("ARGUS_NO_MONITOR") != "1":
             monitor_service.start()
         if _os.environ.get("ARGUS_NO_WINEVENT") != "1":
-            winevent_collector.start()
+            winevent_collector.start()   # Windows only (no-op elsewhere)
+            syslog_collector.start()     # Linux only (no-op elsewhere)
         if _os.environ.get("ARGUS_NO_SAMPLER") != "1":
             net_telemetry.sampler.start()
         backup.backup_service.start()
@@ -472,9 +487,9 @@ def endpoint_logs(user: dict = Depends(require_user), host: str = "",
     """Device/endpoint security log: events carrying an event code, or coming
     from the OS log / agent / auth sources. Each row is enriched with the
     knowledge-base meaning for its code."""
+    src_filter = "source IN ('winlog','syslog','agent','auth')"
     sql = ("SELECT id, ts, source, host, category, severity, message, src_ip, user, "
-           "event_id, provider, count, last_ts FROM events WHERE (event_id IS NOT NULL "
-           "OR source IN ('winlog','agent','auth'))")
+           f"event_id, provider, count, last_ts FROM events WHERE (event_id IS NOT NULL OR {src_filter})")
     params: list[Any] = []
     if host:
         sql += " AND host = ?"; params.append(host)
@@ -485,18 +500,18 @@ def endpoint_logs(user: dict = Depends(require_user), host: str = "",
     for r in rows:
         if r.get("event_id") is not None:
             r["meta"] = describe(r["event_id"])
-    hosts = db.query("SELECT DISTINCT host FROM events WHERE host IS NOT NULL "
-                     "AND (event_id IS NOT NULL OR source IN ('winlog','agent','auth')) ORDER BY host")
+    hosts = db.query(f"SELECT DISTINCT host FROM events WHERE host IS NOT NULL "
+                     f"AND (event_id IS NOT NULL OR {src_filter}) ORDER BY host")
     return {"logs": rows, "hosts": [h["host"] for h in hosts],
-            "collector": {"available": winevent_collector.available,
-                          "last_run": winevent_collector.last_run,
-                          "ingested": winevent_collector.total_ingested}}
+            "collector": {"available": os_log_collector.available,
+                          "source": "Windows Event Log" if os_log_collector is winevent_collector else "Linux syslog/journald",
+                          "last_run": os_log_collector.last_run,
+                          "ingested": os_log_collector.total_ingested}}
 
 
 @app.post("/api/logs/pull")
 async def pull_winlog(user: dict = Depends(require_user)):
-    result = await asyncio.to_thread(winevent_collector.pull, 3600, 120)
-    return result
+    return await asyncio.to_thread(os_log_collector.pull, 3600, 200)
 
 
 # --------------------------------------------------------------------------- #
@@ -720,6 +735,31 @@ async def export_case_ep(cid: int, user: dict = Depends(require_user)):
 @app.get("/api/timeline")
 def timeline_ep(user: dict = Depends(require_user), entity: str = ""):
     return timeline.entity_timeline(entity)
+
+
+# --------------------------------------------------------------------------- #
+# AI analyst (built-in, offline)
+# --------------------------------------------------------------------------- #
+@app.get("/api/ai/status")
+def ai_status(user: dict = Depends(require_user)):
+    return ai.status()
+
+
+@app.post("/api/ai/ask")
+async def ai_ask(request: Request, user: dict = Depends(require_user)):
+    b = await request.json()
+    return await asyncio.to_thread(ai.answer, b.get("question", ""))
+
+
+@app.get("/api/ai/insights")
+def ai_insights(user: dict = Depends(require_user)):
+    return ai.insights()
+
+
+@app.post("/api/ai/explain")
+async def ai_explain(request: Request, user: dict = Depends(require_user)):
+    b = await request.json()
+    return await asyncio.to_thread(ai.explain, b.get("kind", "event"), int(b.get("id")))
 
 
 # --------------------------------------------------------------------------- #
